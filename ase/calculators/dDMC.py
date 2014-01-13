@@ -38,117 +38,62 @@ import numpy as np
 from ase.calculators.calculator import FileIOCalculator, kpts2mp
 
 
-class Dftb(FileIOCalculator):
-    """ A dftb+ calculator with ase-FileIOCalculator nomenclature
+class dDMC(FileIOCalculator):
+    """ A calculator to compute the dDMC corrections with ase-FileIOCalculator nomenclature
     """
     if 'DFTB_COMMAND' in os.environ:
-        command = os.environ['DFTB_COMMAND'] + ' > PREFIX.out'
+        dftb_command = os.environ['DFTB_COMMAND'] + ' > DFTB.out'
     else:
-        command = 'dftb+ > PREFIX.out'
+        dftb_command = 'dftb+ > PREFIX.out'
 
-    implemented_properties = ['energy', 'forces', 'charges']
+    if 'dDMC_COMMAND' in os.environ:
+        dDMC_command = os.environ['DFTB_COMMAND'] + ' > dDMC.out'
+    else:
+        raise MissingEnviromentVariable('DFTB_COMMAND')
+
+    command = dDMC_command
+
+    implemented_properties = ['energy']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
-                 label='dftb', atoms=None, kpts=None,
+                 label='dDMC', atoms=None, kpts=None,
                  **kwargs):
-        """Construct a DFTB+ calculator.
+        """Construct a dDMC calculator.
         """
 
-        from ase.dft.kpoints import monkhorst_pack
-
-        if 'DFTB_PREFIX' in os.environ:
-            slako_dir = os.environ['DFTB_PREFIX']
-        else:
-            slako_dir = './'
-
         self.default_parameters = dict(
-            Hamiltonian_='DFTB',
-            Driver_='ConjugateGradient',
-            Driver_MaxForceComponent='1E-4',
-            Driver_MaxSteps=0,
-            Hamiltonian_SlaterKosterFiles_='Type2FileNames',
-            Hamiltonian_SlaterKosterFiles_Prefix=slako_dir,
-            Hamiltonian_SlaterKosterFiles_Separator='"-"',
-            Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
-            Hamiltonian_SCC = 'No'
+            tag = label+'.tag',
+            debugflag = 'down'
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
-        self.kpts = kpts
-        # kpoint stuff by ase
-        if self.kpts != None:
-            mpgrid = kpts2mp(atoms, self.kpts)
-            mp = monkhorst_pack(mpgrid)
-            initkey = 'Hamiltonian_KPointsAndWeights'
-            self.parameters[initkey + '_'] = ''
-            for i, imp in enumerate(mp):
-                key = initkey + '_empty' + str(i)
-                self.parameters[key] = str(mp[i]).strip('[]') + ' 1.0'
-
-        #the input file written only once
-        if restart == None:
-            self.write_dftb_in()
-        else:
-            if os.path.exists(restart):
-                os.system('cp ' + restart + ' dftb_in.hsd')
-            if not os.path.exists('dftb_in.hsd'):
-                raise IOError('No file "dftb_in.hsd", use restart=None')
+        if kpts != None: raise NotImplemented ('dDMC cannot execute k-points computations')
+        if restart != None: raise NotImplemented ('No meaning to restart a dDMC computation')
 
         #indexes for the result file
         self.first_time = True
         self.index_energy = None
-        self.index_force_begin = None
-        self.index_force_end = None
-        self.index_charge_begin = None
-        self.index_charge_end = None
 
-    def write_dftb_in(self):
-        """ Write the innput file for the dftb+ calculation.
-            Geometry is taken always from the file 'geo_end.gen'.
+    def write_dDMC_in(self):
+        """ Write the innput file for the dDMC calculation.
+            Geometry is taken always from the file 'label.xyz'.
         """
 
-        outfile = open('dftb_in.hsd', 'w')
-        outfile.write('Geometry = GenFormat { \n')
-        outfile.write('    <<< "geo_end.gen" \n')
-        outfile.write('} \n')
-        outfile.write(' \n')
+        outfile = open('ddmc.in', 'w')
+        outfile.write('# This file is prepared by python-ASE')
 
         #--------MAIN KEYWORDS-------
-        previous_key = 'dummy_'
-        myspace = ' '
-        if self.parameters['Hamiltonian_SCC'] == 'No' :
-            self.parameters['Options_MullikenAnalysis'] = 'Yes'
-        for key, value in sorted(self.parameters.items()):
-            current_depth = key.rstrip('_').count('_')
-            previous_depth = previous_key.rstrip('_').count('_')
-            for my_backsclash in reversed(\
-                range(previous_depth - current_depth)):
-                outfile.write(3 * (1 + my_backsclash) * myspace + '} \n')
-            outfile.write(3 * current_depth * myspace)
-            if key.endswith('_'):
-                outfile.write(key.rstrip('_').rsplit('_')[-1] + \
-                                  ' = ' + str(value) + '{ \n')
-            elif key.count('_empty') == 1:
-                outfile.write(str(value) + ' \n')
-            else:
-                outfile.write(key.rsplit('_')[-1] + ' = ' + str(value) + ' \n')
-            previous_key = key
-        current_depth = key.rstrip('_').count('_')
-        for my_backsclash in reversed(range(current_depth)):
-            outfile.write(3 * my_backsclash * myspace + '} \n')
-        #output to 'results.tag' file (which has proper formatting)
-        outfile.write('Options { \n')
-        outfile.write('   WriteResultsTag = Yes  \n')
-        outfile.write('} \n')
-        outfile.close()
+        for key,value in sorted(self.parameters.items()):
+            outfile.write(key+' = '+parameters[key])
+        
 
     def set(self, **kwargs):
         changed_parameters = FileIOCalculator.set(self, **kwargs)
         if changed_parameters:
             self.reset()
-            self.write_dftb_in()
+            self.write_dDMC_in()
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
@@ -158,8 +103,8 @@ class Dftb(FileIOCalculator):
         from ase.io import write
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
-        self.write_dftb_in()
-        write('geo_end.gen', atoms)
+        self.write_dDMC_in()
+        write(label+'.xyz', atoms)
 
     def read_results(self):
         """ all results are read from results.tag file 

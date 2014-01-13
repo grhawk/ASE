@@ -46,7 +46,7 @@ class Dftb(FileIOCalculator):
     else:
         command = 'dftb+ > PREFIX.out'
 
-    implemented_properties = ['energy', 'forces', 'charges']
+    implemented_properties = ['energy', 'forces']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='dftb', atoms=None, kpts=None,
@@ -69,8 +69,7 @@ class Dftb(FileIOCalculator):
             Hamiltonian_SlaterKosterFiles_='Type2FileNames',
             Hamiltonian_SlaterKosterFiles_Prefix=slako_dir,
             Hamiltonian_SlaterKosterFiles_Separator='"-"',
-            Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
-            Hamiltonian_SCC = 'No'
+            Hamiltonian_SlaterKosterFiles_Suffix='".skf"'
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -101,8 +100,6 @@ class Dftb(FileIOCalculator):
         self.index_energy = None
         self.index_force_begin = None
         self.index_force_end = None
-        self.index_charge_begin = None
-        self.index_charge_end = None
 
     def write_dftb_in(self):
         """ Write the innput file for the dftb+ calculation.
@@ -118,8 +115,6 @@ class Dftb(FileIOCalculator):
         #--------MAIN KEYWORDS-------
         previous_key = 'dummy_'
         myspace = ' '
-        if self.parameters['Hamiltonian_SCC'] == 'No' :
-            self.parameters['Options_MullikenAnalysis'] = 'Yes'
         for key, value in sorted(self.parameters.items()):
             current_depth = key.rstrip('_').count('_')
             previous_depth = previous_key.rstrip('_').count('_')
@@ -188,21 +183,8 @@ class Dftb(FileIOCalculator):
                     self.index_force_end = iline + 1 + \
                         int(line1.split(',')[-1])
                     break
-            # Charge line indexes
-            for iline, line in enumerate(self.lines):
-                fstring = 'net_atomic_charges'
-                if line.find(fstring) >= 0:
-                    self.index_charge_begin = iline + 1
-                    line1 = line.replace(':', ',')
-                    natoms = int(line1.split(',')[-1])
-                    mod = natoms%3
-                    self.index_charge_end = iline + 1 + \
-                         natoms/3 + mod
-                    break
-
 
         self.read_energy()
-        self.read_charges()
         # read geometry from file in case dftb+ has done steps
         # to move atoms, in that case forces are not read
         if int(self.parameters['Driver_MaxSteps']) > 0:
@@ -237,16 +219,3 @@ class Dftb(FileIOCalculator):
 
         except:
             raise RuntimeError('Problem in reading forces')
-        
-    def read_charges(self):
-        try:
-            charges = []
-            for j in range(self.index_charge_begin, self.index_charge_end):
-                word = self.lines[j].split()
-                charges.append([float(word[k]) for k in range(len(word))])
-
-            self.results['charges'] = np.array(charges)
-
-        except:
-            raise RuntimeError('Problem in reading charges')
-

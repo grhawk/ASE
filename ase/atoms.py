@@ -576,6 +576,8 @@ class Atoms(object):
             raise RuntimeError('Atoms object has no calculator.')
         return self._calc.get_magnetic_moment(self)
 
+#########################
+
     def set_initial_charges(self, charges=None):
         """Set the initial charges."""
 
@@ -604,8 +606,11 @@ class Atoms(object):
             raise RuntimeError('Atoms object has no calculator.')
         try:
             charges = self._calc.get_charges(self)
+            return charges
         except AttributeError:
             raise NotImplementedError
+
+#########################
 
     def set_positions(self, newpositions):
         """Set positions, honoring any constraints."""
