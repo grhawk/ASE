@@ -167,6 +167,7 @@ class Dftb(FileIOCalculator):
             reading it once again after some runtime error """
         from ase.io import read
         from os import remove
+        from shutil import copyfile
 
         myfile = open('results.tag', 'r')
         self.lines = myfile.readlines()
@@ -210,6 +211,7 @@ class Dftb(FileIOCalculator):
             self.results['forces'] = np.zeros([len(self.state), 3])
         else:
             self.read_forces()
+        copyfile('results.tag',self.label+'.tag')
         os.remove('results.tag')
             
     def read_energy(self):
