@@ -70,7 +70,8 @@ class Dftb(FileIOCalculator):
             Hamiltonian_SlaterKosterFiles_Prefix=slako_dir,
             Hamiltonian_SlaterKosterFiles_Separator='"-"',
             Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
-            Hamiltonian_SCC = 'No'
+            Hamiltonian_SCC = 'No',
+            Hamiltonian_MaxAngularMomentum_ = ''
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -103,6 +104,24 @@ class Dftb(FileIOCalculator):
         self.index_force_end = None
         self.index_charge_begin = None
         self.index_charge_end = None
+
+    def Ham_MaxAngMom(self,atoms):
+        max_ang_mom = {
+            'c': '"p"',
+            'o': '"p"',
+            'n': '"p"',
+            'h': '"s"'
+            }
+        from ase.io import write
+        write('geo_end.gen', atoms)
+        atoms = open('geo_end.gen','r').readlines()[1].rstrip().split()
+        for at in atoms:
+            if at.lower() not in max_ang_mom:
+                import sys
+                sys.stderr.write('ERROR: max_ang_mom not specified for atom '+at+'\n')
+                sys.exit
+            self.parameters['Hamiltonian_MaxAngularMomentum_'+str(at)] = max_ang_mom[at.lower()]
+
 
     def write_dftb_in(self):
         """ Write the innput file for the dftb+ calculation.
@@ -155,11 +174,10 @@ class Dftb(FileIOCalculator):
         return system_changes
 
     def write_input(self, atoms, properties=None, system_changes=None):
-        from ase.io import write
+        self.Ham_MaxAngMom(atoms)
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
         self.write_dftb_in()
-        write('geo_end.gen', atoms)
 
     def read_results(self):
         """ all results are read from results.tag file 
@@ -196,9 +214,15 @@ class Dftb(FileIOCalculator):
                     self.index_charge_begin = iline + 1
                     line1 = line.replace(':', ',')
                     natoms = int(line1.split(',')[-1])
-                    mod = natoms%3
+#                    mod = natoms%3
+                    if natoms%3 == 0:
+                        mod = 0
+                    else:
+                        mod = 1
+#                    print "mod", mod
                     self.index_charge_end = iline + 1 + \
                          natoms/3 + mod
+#                    print "charge_end", self.index_charge_end
                     break
 
 
