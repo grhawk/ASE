@@ -63,7 +63,7 @@ class dDMC(FileIOCalculator):
             if key.find('param_') >=0:
                 parfile.write('%12.6f\n' % float(value))
             else:
-                outfile.write(key+' = '+value+'\n')
+                outfile.write(str(key)+' = '+str(value)+'\n')
         
 
     def set(self, **kwargs):
