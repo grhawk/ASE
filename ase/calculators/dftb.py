@@ -105,23 +105,31 @@ class Dftb(FileIOCalculator):
         self.index_charge_begin = None
         self.index_charge_end = None
 
-    def Ham_MaxAngMom(self,atoms):
+    def Ham_AtomsDependProp(self,atoms):
         max_ang_mom = {
             'c': '"p"',
             'o': '"p"',
             'n': '"p"',
             'h': '"s"'
-            }
+        }
+        hubbard_derivs = {
+            'c': -0.1492,
+            'o': -0.1575,
+            'n': -0.1535,
+            'h': -0.1857
+        }
         from ase.io import write
         write('geo_end.gen', atoms)
         atoms = open('geo_end.gen','r').readlines()[1].rstrip().split()
         for at in atoms:
-            if at.lower() not in max_ang_mom:
+            if at.lower() not in max_ang_mom or at.lower() not in hubbard_derivs:
                 import sys
                 sys.stderr.write('ERROR: max_ang_mom not specified for atom '+at+'\n')
                 sys.exit
             self.parameters['Hamiltonian_MaxAngularMomentum_'+str(at)] = max_ang_mom[at.lower()]
-
+            if 'Hamiltonian_ThirdOrderFull' in self.parameters:
+                if self.parameters['Hamiltonian_ThirdOrderFull'].lower() == 'yes':
+                    self.parameters['Hamiltonian_HubbardDerivs_'+str(at)] = hubbard_derivs[at.lower()]
 
     def write_dftb_in(self):
         """ Write the innput file for the dftb+ calculation.
@@ -174,7 +182,7 @@ class Dftb(FileIOCalculator):
         return system_changes
 
     def write_input(self, atoms, properties=None, system_changes=None):
-        self.Ham_MaxAngMom(atoms)
+        self.Ham_AtomsDependProp(atoms)
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
         self.write_dftb_in()
