@@ -55,12 +55,17 @@ class dDMC(FileIOCalculator):
 
         outfile = open('ddmc.in', 'w')
         outfile.write('# This file is prepared by python-ASE\n')
-        parfile = open('parameters.dat', 'w')
-        parfile.write('# This file is prepared by python-ASE\n')
+        parfile_open = False
 
         #--------MAIN KEYWORDS-------
         for key,value in sorted(self.parameters.items()):
             if key.find('param_') >=0:
+
+                if parfile_open == False:
+                    parfile = open('parameters.dat', 'w')
+                    parfile.write('# This file is prepared by python-ASE\n')
+                    parfile_open = True
+                    
                 parfile.write('%12.6f\n' % float(value))
             else:
                 outfile.write(str(key)+' = '+str(value)+'\n')
