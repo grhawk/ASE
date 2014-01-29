@@ -16,7 +16,7 @@ class D3H4(FileIOCalculator):
     """ A calculator to compute the D3H4 corrections with ase-FileIOCalculator nomenclature
     """
     if 'D3' in os.environ and 'H4' in os.environ:
-        D3H4_command = os.environ['D3'] + 'struct.xyz' + ' -func scc-dftb+h4 -zero > d3h4.out; ' + os.environ['H4'] + ' < struct.xyz >> d3h4.out'
+        D3H4_command = os.environ['D3'] + ' struct.xyz ' + ' -func scc-dftb+h4 -zero > d3h4.out; ' + os.environ['H4'] + ' < struct.xyz >> d3h4.out'
     else:
         raise EnvironmentError('1','D3 or H4 variables have to be defined')
 
@@ -107,10 +107,10 @@ class D3H4(FileIOCalculator):
                 h4_estring = 'Total:'
                 if line.find(d3_estring) >= 0:
                     self.index_d3energy = iline
-                    break
+#                    break
                 if line.find(h4_estring) >= 0:
                     self.index_h4energy = iline
-                    break
+#                    break
             # # Force line indexes
             # for iline, line in enumerate(self.lines):
             #     fstring = 'forces   '
