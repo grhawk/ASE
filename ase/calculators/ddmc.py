@@ -35,7 +35,8 @@ class dDMC(FileIOCalculator):
             tag = label+'.tag',
             debugflag = 'down',
             geometry = label+'.xyz',
-            atomdata = 'notImportant'
+            atomdata = 'notImportant',
+            tagtype = 'dftbp'
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
