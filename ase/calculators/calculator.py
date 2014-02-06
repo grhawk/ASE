@@ -18,7 +18,7 @@ all_changes = ['positions', 'numbers', 'cell', 'pbc', 'charges', 'magmoms']
 
 
 # Recognized names of calculators sorted alphabetically:
-names = ['abinit', 'aims', 'asap', 'castep', 'dftb', 'eam', 'elk', 'emt',
+names = ['abinit', 'aims', 'asap', 'castep', 'dftb', 'ddmc', 'eam', 'elk', 'emt',
          'exciting', 'fleur', 'gpaw', 'gaussian', 'hotbit', 'jacapo',
          'lammps', 'lammpslib', 'lj', 'mopac', 'morse',
          'nwchem', 'siesta', 'turbomole', 'vasp']
