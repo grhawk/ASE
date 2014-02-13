@@ -149,6 +149,7 @@ class D3H4(FileIOCalculator):
 
         # Energy:
         try:
+            # The kcal/mol is to convert everything in eV
             d3_energy = float(self.lines[self.index_d3energy].split()[3]) * kcal/mol
             h4_energy = float(self.lines[self.index_h4energy].split()[1]) * kcal/mol
             if os.environ['H4_correction'] == 'no': h4_energy = 0.0
