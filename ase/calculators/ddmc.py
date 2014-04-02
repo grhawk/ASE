@@ -23,7 +23,7 @@ class dDMC(FileIOCalculator):
 
     command = dDMC_command
 
-    implemented_properties = ['energy']
+    implemented_properties = ['energy','forces']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='dDMC', atoms=None, kpts=None,
@@ -36,7 +36,8 @@ class dDMC(FileIOCalculator):
             debugflag = 'down',
             geometry = label+'.xyz',
             atomdata = 'notImportant',
-            tagtype = 'dftbp'
+            tagtype = 'dftbp',
+            gradient = 'UP'
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -107,15 +108,15 @@ class dDMC(FileIOCalculator):
                 if line.find(estring) >= 0:
                     self.index_energy = iline + 1
                     break
-            # # Force line indexes
-            # for iline, line in enumerate(self.lines):
-            #     fstring = 'forces   '
-            #     if line.find(fstring) >= 0:
-            #         self.index_force_begin = iline + 1
-            #         line1 = line.replace(':', ',')
-            #         self.index_force_end = iline + 1 + \
-            #             int(line1.split(',')[-1])
-            #         break
+            # Force line indexes
+            for iline, line in enumerate(self.lines):
+                fstring = 'forces   '
+                if line.find(fstring) >= 0:
+                    self.index_force_begin = iline + 1
+                    line1 = line.replace(':', ',')
+                    self.index_force_end = iline + 1 + \
+                        int(line1.split(',')[-1])
+                    break
             # # Charge line indexes
             # for iline, line in enumerate(self.lines):
             #     fstring = 'net_atomic_charges'
@@ -130,6 +131,7 @@ class dDMC(FileIOCalculator):
 
 
         self.read_energy()
+        self.read_forces()
         # # read geometry from file in case dftb+ has done steps
         # # to move atoms, in that case forces are not read
         # if int(self.parameters['Driver_MaxSteps']) > 0:
@@ -150,20 +152,20 @@ class dDMC(FileIOCalculator):
         except:
             raise RuntimeError('Problem in reading energy')
 
-    # def read_forces(self):
-    #     """Read Forces from dftb output file (results.tag)."""
-    #     from ase.units import Hartree, Bohr
+    def read_forces(self):
+        """Read Forces from dDMC output file (results.tag)."""
+        from ase.units import Hartree, Bohr
 
-    #     try:
-    #         gradients = []
-    #         for j in range(self.index_force_begin, self.index_force_end):
-    #             word = self.lines[j].split()
-    #             gradients.append([float(word[k]) for k in range(0, 3)])
+        try:
+            gradients = []
+            for j in range(self.index_force_begin, self.index_force_end):
+                word = self.lines[j].split()
+                gradients.append([float(word[k]) for k in range(0, 3)])
+                
+            self.results['forces'] = np.array(gradients) * Hartree / Bohr
 
-    #         self.results['forces'] = np.array(gradients) * Hartree / Bohr
-
-    #     except:
-    #         raise RuntimeError('Problem in reading forces')
+        except:
+            raise RuntimeError('Problem in reading forces')
         
     # def read_charges(self):
     #     try:
