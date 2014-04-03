@@ -46,7 +46,8 @@ class Dftb(FileIOCalculator):
     else:
         command = 'dftb+ > PREFIX.out'
 
-    implemented_properties = ['energy', 'forces', 'charges']
+#    implemented_properties = ['energy', 'forces', 'charges']
+    implemented_properties = ['energy', 'forces']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='dftb', atoms=None, kpts=None,
