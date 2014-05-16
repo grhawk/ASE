@@ -237,7 +237,7 @@ class Dftb(FileIOCalculator):
 
 
         self.read_energy()
-        self.read_charges()
+#        self.read_charges()
         # read geometry from file in case dftb+ has done steps
         # to move atoms, in that case forces are not read
         if int(self.parameters['Driver_MaxSteps']) > 0:
