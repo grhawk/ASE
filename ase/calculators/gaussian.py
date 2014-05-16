@@ -241,6 +241,7 @@ class Gaussian(FileIOCalculator):
         self.results['energy'] = read_gaussian_out(filename, quantity='energy')
         self.results['forces'] = read_gaussian_out(filename, quantity='forces')
         self.results['dipole'] = read_gaussian_out(filename, quantity='dipole')
+        self.results['charges'] = read_gaussian_out(filename, quantity='charges')
 
     def clean(self):
         """Cleans up from a previous run"""

@@ -62,12 +62,17 @@ def read_gaussian_out(filename, index=-1, quantity='atoms'):
         f.close()
 
         forces = list()
+        charges = list()
         for n, line in enumerate(lines):
             if ('Forces (Hartrees/Bohr)' in line):
                 for j in range(len(atoms)):
                     forces += [[float(lines[n + j + 3].split()[2]),
                                 float(lines[n + j + 3].split()[3]),
                                 float(lines[n + j + 3].split()[4])]]
+
+            if ('Mulliken charges:' in line):
+                for j in range(len(atoms)):
+                    charges += [-float(lines[n+j+2].split()[2])+int(Atoms(str(lines[n+j+2].split()[1])).get_atomic_numbers())]
         convert = ase.units.Hartree / ase.units.Bohr
         forces = np.array(forces) * convert
     except:
@@ -87,7 +92,8 @@ def read_gaussian_out(filename, index=-1, quantity='atoms'):
         return atoms
     elif (quantity == 'version'):
         return version
-
+    elif (quantity == 'charges'):
+        return charges
 
 def read_gaussian(filename):
     """Reads a Gaussian input file"""
