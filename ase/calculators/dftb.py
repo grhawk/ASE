@@ -66,12 +66,14 @@ class Dftb(FileIOCalculator):
             Hamiltonian_='DFTB',
             Driver_='ConjugateGradient',
             Driver_MaxForceComponent='1E-4',
+            Driver_ConvergentForcesOnly = 'No',
             Driver_MaxSteps=0,
             Hamiltonian_SlaterKosterFiles_='Type2FileNames',
             Hamiltonian_SlaterKosterFiles_Prefix=slako_dir,
             Hamiltonian_SlaterKosterFiles_Separator='"-"',
             Hamiltonian_SlaterKosterFiles_Suffix='".skf"',
             Hamiltonian_SCC = 'No',
+            Hamiltonian_Eigensolver = 'RelativelyRobust{}'
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
