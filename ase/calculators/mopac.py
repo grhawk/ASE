@@ -62,6 +62,7 @@ class Mopac(Calculator):
         self.energy_zero = None
         self.energy_free = None
         self.forces = None
+        self.charges = None
         self.stress = None
         
         # initialize the results
@@ -179,6 +180,7 @@ class Mopac(Calculator):
         self.energy_free = energy
         
         self.forces = self.read_forces(foutput)
+        self.charges = self.read_charges(foutput)
 
     def read_version(self, fname):
         """
@@ -238,6 +240,27 @@ class Mopac(Calculator):
         
         forces *= - (kcal / mol)
         return forces
+
+    def read_charges(self, fname):
+        """
+        Reads the CHARGES from the output file
+        """
+        outfile = open(fname)
+        lines = outfile.readlines()
+        outfile.close()
+
+        nats = len(self.atoms)
+        charges = np.zeros((nats), float)
+        
+        for i, line in enumerate(lines):
+            if line.find('NO.  ATOM   POPULATION      CHARGE') != -1:
+                for j in range(nats):
+                    gline = lines[i + j + 1]
+                    charges[j] = float(gline[16:27])
+                break
+        
+        return charges
+
         
     def atoms_are_equal(self, atoms_new):
         ''' (adopted from jacapo.py)
