@@ -42,8 +42,6 @@ class Mopac(FileIOCalculator):
         self.label = label
         self.atoms = atoms
 
-        print 'LABEL: ',label
-
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file, label, atoms, **kwargs)
 
         #the input file written only once
@@ -208,8 +206,7 @@ class Mopac(FileIOCalculator):
                         gline = lines[i + j + 1]
                         forces[j / 3, j % 3] = float(gline[49:62])
                     break
-            print 'ok'
-            # forces *= - (kcal / mol)
+
             self.results['forces'] = np.array(forces) * kcal/mol
 
         except:
