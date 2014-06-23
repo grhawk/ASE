@@ -232,7 +232,7 @@ class Mopac(FileIOCalculator):
                 if line.find('ATOM NO.   TYPE          CHARGE      No. of ELECS.   s-Pop       p-Pop') != -1:
                     for j in range(nats):
                         gline = lines[i + j + 1]
-                        charges[j] = float(gline[18:35])
+                        charges[j] = float(gline[37:50])
                     break
 
             self.results['charges'] = np.array(charges)

@@ -38,8 +38,10 @@ class MopacdDMC(FileIOCalculator):
 
 
     def write_input(self, atoms, properties=None, systems_changes=None):
-        self.gaus_calc = Gaussian(label=self.label)
-        self.gaus_calc.parameters.update(self.gausdict)
+        from ase.io import write
+        atoms.write(self.label+'.xyz','xyz')
+        self.mopac_calc = Mopac(label=self.label)
+        self.mopac_calc.parameters.update(self.mopacdict)
         self.ddmc_calc = dDMC(label=self.label)
         self.ddmc_calc.parameters.update(self.ddmcdict)
 
