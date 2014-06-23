@@ -9,7 +9,7 @@ from ase.calculators.ddmc import dDMC
 from ase.calculators.calculator import FileIOCalculator, kpts2mp
 
 class GausdDMC(FileIOCalculator):
-    """ A dftb+-dDMC calculator with ase-FileIOCalculator nomenclature
+    """ A Gaussian-dDMC calculator with ase-FileIOCalculator nomenclature
     """
 
     implemented_properties = ['energy', 'forces']#, 'charges']
