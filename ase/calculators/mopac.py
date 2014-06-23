@@ -15,48 +15,40 @@ import os
 import numpy as np
 
 from ase.units import kcal, mol
-from ase.calculators.general import Calculator
+from ase.calculators.calculator import FileIOCalculator
 
-str_keys = ['functional', 'job_type', 'command']
-int_keys = ['restart', 'spin']
-bool_keys = ['OPT']
-float_keys = ['RELSCF']
-
-
-class Mopac(Calculator):
+class Mopac(FileIOCalculator):
     name = 'MOPAC'
-    def __init__(self, label='ase', **kwargs):
-        # define parameter fields
-        self.str_params = {}
-        self.int_params = {}
-        self.bool_params = {}
-        self.float_params = {}
-        
-        # initials parameter fields
-        for key in str_keys:
-            self.str_params[key] = None
-        for key in int_keys:
-            self.int_params[key] = None
-        for key in bool_keys:
-            self.bool_params[key] = None
-        for key in float_keys:
-            self.float_params[key] = None
+
+    """Command to run mopac. """
+    command = os.environ['MOPAC_COMMAND']+' mopac.mop'
+
+    implemented_properties = ['energy', 'forces', 'charges']
+
+    def __init__(self, label='mopac', restart=None, atoms=None, ignore_bad_restart_file=None,**kwargs):
                         
         # set initial values
-        self.set(restart=0,
-                 spin=0,
-                 OPT=False,
-                 functional='PM6',
-                 job_type='NOANCI 1SCF GRADIENTS AUX(0,PRECISION=9)',
-                 RELSCF=0.0001)
-        # set user values
-        self.set(**kwargs)
-
-        # save label
-        self.label = label
+        self.default_parameters = dict(
+            restart = 0,
+            spin = 0,
+            opt = False,
+            functional = 'PM6',
+            job_type = ['NOANCI','GRADIENTS', '1SCF'],
+            relscf = 0.000001,
+            charge = 0
+        )
         
-        #set atoms
-        self.atoms = None
+        # save label and atoms
+        self.label = label
+        self.atoms = atoms
+
+        print 'LABEL: ',label
+
+        FileIOCalculator.__init__(self, restart, ignore_bad_restart_file, label, atoms, **kwargs)
+
+        #the input file written only once
+        # self.write_mopac_in(self.atoms)
+
         # initialize the results
         self.version = None
         self.energy_zero = None
@@ -68,52 +60,45 @@ class Mopac(Calculator):
         # initialize the results
         self.occupations = None
         
+        
     def set(self, **kwargs):
         """
         Sets the parameters on the according keywords
         Raises RuntimeError when wrong keyword is provided
         """
-        for key in kwargs:
-            if key in self.bool_params:
-                self.bool_params[key] = kwargs[key]
-            elif key in self.int_params:
-                self.int_params[key] = kwargs[key]
-            elif key in self.str_params:
-                self.str_params[key] = kwargs[key]
-            elif key in self.float_params:
-                self.float_params[key] = kwargs[key]
-            else:
-                raise RuntimeError('MOPAC calculator: unknown keyword: ' + key)
+        changed_parameters = FileIOCalculator.set(self, **kwargs)
+        if changed_parameters:
+            self.reset()
+#            self.write_input(self.atoms)
 
     def get_version(self):
         return self.version
 
-    def initialize(self, atoms):
-        pass
-
-    def write_input(self, fname, atoms):
+    def write_input(self,atoms,properties=None,system_changes=None):
         """
         Writes the files that have to be written each timestep
         """
+
+        FileIOCalculator.write_input(self,atoms,properties,system_changes)
         
         # start the input
         mopac_input = ''
 
         #write functional and job_type
-        for key in 'functional', 'job_type':
-            if self.str_params[key] != None:
-                mopac_input += self.str_params[key] + ' '
-                
-        if self.float_params['RELSCF'] != None:
-            mopac_input += 'RELSCF=' + str(self.float_params['RELSCF']) + ' '
+        mopac_input += self.parameters['functional']+' '
+        for value in self.parameters['job_type']:
+            mopac_input += value + ' '
+        
+        mopac_input += 'RELSCF=' + str(self.parameters['relscf']) + ' '
             
         #write charge
         charge = sum(atoms.get_initial_charges())
+        charge = max([charge,self.parameters['charge']])
         if charge != 0:
             mopac_input += 'CHARGE=%i ' % (charge)
         
         #write spin
-        spin = self.int_params['spin']
+        spin = self.parameters['spin']
         if spin == 1.:
             mopac_input += 'DOUBLET '
         elif spin == 2.:
@@ -123,83 +108,63 @@ class Mopac(Calculator):
         mopac_input += '\n'
         mopac_input += 'Title: ASE job\n\n'
 
-        f = 1
-        # write coordinates
-        for iat in xrange(len(atoms)):
-            atom = atoms[iat]
-            xyz = atom.position
-            mopac_input += ' %2s' % atom.symbol
-            # write x, y, z
-            for idir in xrange(3):
-                mopac_input += '    %16.5f %i' % (xyz[idir], f)
-            mopac_input += '\n'
+        symbols = atoms.get_chemical_symbols()
+        coordinates = atoms.get_positions()
+        for i in range(len(atoms)):
+            mopac_input += ('%-10s' % symbols[i])
+            for j in range(3):
+                mopac_input += ('%20.10f' % coordinates[i, j])
+            mopac_input += ('\n')
 
         if atoms.pbc.any():
             for v in atoms.get_cell():
                 mopac_input += 'Tv %8.3f %8.3f %8.3f\n' % (v[0], v[1], v[2])
         
         # write input
-        myfile = open(fname, 'w')
+        myfile = open('mopac.mop', 'w')
         myfile.write(mopac_input)
         myfile.close()
 
-    def get_command(self):
-        """Return command string if program installed, otherwise None.  """
-        command = None
-        if self.str_params['command'] is not None:
-            command = self.str_params['command']
-        elif ('MOPAC_COMMAND' in os.environ):
-            command = os.environ['MOPAC_COMMAND']
-        return command
-
-    def run(self):
+    def read_results(self):
         """
         Writes input in label.mop
         Runs MOPAC
         Reads Version, Energy and Forces
         """
-        # set the input file name
+        # set the input and output file name
         finput = self.label + '.mop'
-        foutput = self.label + '.out'
-        
-        self.write_input(finput, self.atoms)
+        foutput = self.label+'.out'
 
-        command = self.get_command()
-        if command is None:
-            raise RuntimeError('MOPAC command not specified')
-        
-        exitcode = os.system('%s %s' % (command, finput))
-        
-        if exitcode != 0:
-            raise RuntimeError('MOPAC exited with error code')
+        self.version = self.read_version()
 
-        self.version = self.read_version(foutput)
-
-        energy = self.read_energy(foutput)
+        energy = self.read_energy()
         self.energy_zero = energy
         self.energy_free = energy
         
-        self.forces = self.read_forces(foutput)
-        self.charges = self.read_charges(foutput)
+        self.forces = self.read_forces()
+        self.charges = self.read_charges()
 
-    def read_version(self, fname):
+        os.rename('mopac.mop',finput)
+        os.rename('mopac.out',foutput)
+
+    def read_version(self):
         """
         Reads the MOPAC version string from the second line
         """
         version = 'unknown'
-        lines = open(fname).readlines()
+        lines = open('mopac.out').readlines()
         for line in lines:
             if "  Version" in line:
                 version = line.split()[-2]
                 break
         return version
 
-    def read_energy(self, fname):
+    def read_energy(self):
         """
         Reads the ENERGY from the output file (HEAT of FORMATION in kcal / mol)
         Raises RuntimeError if no energy was found
         """
-        outfile = open(fname)
+        outfile = open('mopac.out')
         lines = outfile.readlines()
         outfile.close()
 
@@ -207,91 +172,76 @@ class Mopac(Calculator):
         for line in lines:
             if line.find('HEAT OF FORMATION') != -1:
                 words = line.split()
-                energy = float(words[5])
+                energy = words[5]
             if line.find('H.o.F. per unit cell') != -1:
                 words = line.split()
-                energy = float(words[5])
+                energy = words[5]
             if line.find('UNABLE TO ACHIEVE SELF-CONSISTENCE') != -1:
                 energy = None
         if energy is None:
             raise RuntimeError('MOPAC: could not find total energy')
         
-        energy *= (kcal / mol)
-        return energy
+        try:
+            energy = float(energy)
+            energy *= (kcal / mol)
+            self.results['energy'] = energy
+        except:
+            raise RuntimeError('Problem in reading energy')
+    
 
-    def read_forces(self, fname):
+    def read_forces(self):
         """
         Reads the FORCES from the output file
         search string: (HEAT of FORMATION in kcal / mol / AA)
         """
-        outfile = open(fname)
+        outfile = open('mopac.out')
         lines = outfile.readlines()
         outfile.close()
 
         nats = len(self.atoms)
         forces = np.zeros((nats, 3), float)
-        
-        for i, line in enumerate(lines):
-            if line.find('GRADIENT\n') != -1:
-                for j in range(nats * 3):
-                    gline = lines[i + j + 1]
-                    forces[j / 3, j % 3] = float(gline[49:62])
-                break
-        
-        forces *= - (kcal / mol)
-        return forces
 
-    def read_charges(self, fname):
+        try:
+            for i, line in enumerate(lines):
+                if line.find('GRADIENT\n') != -1:
+                    for j in range(nats * 3):
+                        gline = lines[i + j + 1]
+                        forces[j / 3, j % 3] = float(gline[49:62])
+                    break
+            print 'ok'
+            # forces *= - (kcal / mol)
+            self.results['forces'] = np.array(forces) * kcal/mol
+
+        except:
+            raise RuntimeError('Problem in reading forces')
+
+
+    def read_charges(self):
         """
         Reads the CHARGES from the output file
         """
-        outfile = open(fname)
+        outfile = open('mopac.out')
         lines = outfile.readlines()
         outfile.close()
 
         nats = len(self.atoms)
-        charges = np.zeros((nats), float)
+        charges = np.zeros(nats, float)
         
-        for i, line in enumerate(lines):
-            if line.find('NO.  ATOM   POPULATION      CHARGE') != -1:
-                for j in range(nats):
-                    gline = lines[i + j + 1]
-                    charges[j] = float(gline[16:27])
-                break
-        
-        return charges
+        try:
+            for i, line in enumerate(lines):
+                if line.find('ATOM NO.   TYPE          CHARGE      No. of ELECS.   s-Pop       p-Pop') != -1:
+                    for j in range(nats):
+                        gline = lines[i + j + 1]
+                        charges[j] = float(gline[18:35])
+                    break
+
+            self.results['charges'] = np.array(charges)
+            
+        except:
+            raise RuntimeError('Problem in reading charges')
 
         
-    def atoms_are_equal(self, atoms_new):
-        ''' (adopted from jacapo.py)
-        comparison of atoms to self.atoms using tolerances to account
-        for float/double differences and float math.
-        '''
-    
-        TOL = 1.0e-6  # angstroms
+    def check_state(self, atoms):
+        system_changes = FileIOCalculator.check_state(self, atoms)
+        return system_changes
 
-        # check for change in cell parameters
-        test = len(atoms_new) == len(self.atoms)
-        if test is not True:
-            return False
-        
-        # check for change in cell parameters
-        test = (abs(self.atoms.get_cell() - atoms_new.get_cell()) <= TOL).all()
-        if test is not True:
-            return False
-        
-        old = self.atoms.arrays
-        new = atoms_new.arrays
-        
-        # check for change in atom position
-        test = (abs(new['positions'] - old['positions']) <= TOL).all()
-        if test is not True:
-            return False
-        
-        # passed all tests
-        return True
-
-    def update(self, atoms_new):
-        if not self.atoms_are_equal(atoms_new):
-            self.atoms = atoms_new.copy()
-            self.run()
