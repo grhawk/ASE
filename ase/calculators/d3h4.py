@@ -9,20 +9,22 @@ import os
 
 import numpy as np
 
+from ase.units import kcal, mol, Angstrom
 from ase.calculators.calculator import FileIOCalculator, kpts2mp
 
 
 class D3H4(FileIOCalculator):
     """ A calculator to compute the D3H4 corrections with ase-FileIOCalculator nomenclature
     """
-    if 'D3' in os.environ and 'H4' in os.environ:
-        D3H4_command = os.environ['D3'] + ' struct.xyz ' + ' -func scc-dftb+h4 -'+os.environ['d3df']+' > d3h4.out; ' + os.environ['H4'] + ' < struct.xyz >> d3h4.out'
+
+    if 'D3' in os.environ and 'H4' in os.environ and 'D3FUNC' in os.environ and 'D3DF' in os.environ:
+        D3H4_command = os.environ['D3'] + ' struct.xyz ' + '-grad -func '+os.environ['D3FUNC']+' -'+os.environ['D3DF']+' > d3h4.out; ' + os.environ['H4'] + ' < struct.xyz >> d3h4.out'
     else:
-        raise EnvironmentError('1','D3 or H4 variables have to be defined')
+        raise EnvironmentError('1','Some variable is missing: H4, D3, D3FUNC, D3DF')
 
     command = D3H4_command
 
-    implemented_properties = ['energy']
+    implemented_properties = ['energy','forces']
 
     def __init__(self, restart=None, ignore_bad_restart_file=False,
                  label='D3H4', atoms=None, kpts=None,
@@ -31,10 +33,7 @@ class D3H4(FileIOCalculator):
         """
 
         self.default_parameters = dict(
-            tag = label+'.tag',
-            debugflag = 'down',
-            geometry = label+'.xyz',
-            atomdata = 'notImportant'
+            noH4 = False
             )
 
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
@@ -47,36 +46,11 @@ class D3H4(FileIOCalculator):
         self.first_time = True
         self.index_energy = None
 
-#    def write_D3H4_in(self):
-#        """ 
-#        Write the innput file for the D3H4 calculation.
-#        It means to write the xyz coordinates in a file.
-#        Geometry is taken always from the file 'label.xyz'.
-#        """
-
-#        outfile = open('struct.in', 'w')
-#        outfile.write('# This file is prepared by python-ASE\n')
-#        parfile_open = False
-
-        #--------MAIN KEYWORDS-------
-#        for key,value in sorted(self.parameters.items()):
-#            if key.find('param_') >=0:
-
-#                if parfile_open == False:
-#                    parfile = open('parameters.dat', 'w')
-#                    parfile.write('# This file is prepared by python-ASE\n')
-#                    parfile_open = True
-                    
-#                parfile.write('%12.6f\n' % float(value))
-#            else:
-#                outfile.write(str(key)+' = '+str(value)+'\n')
-        
 
     def set(self, **kwargs):
         changed_parameters = FileIOCalculator.set(self, **kwargs)
         if changed_parameters:
             self.reset()
-            self.write_dDMC_in()
 
     def check_state(self, atoms):
         system_changes = FileIOCalculator.check_state(self, atoms)
@@ -86,7 +60,6 @@ class D3H4(FileIOCalculator):
         from ase.io import write
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
-#        self.write_dDMC_in()
         write('struct.xyz', atoms)
 
     def read_results(self):
@@ -107,41 +80,13 @@ class D3H4(FileIOCalculator):
                 h4_estring = 'Total:'
                 if line.find(d3_estring) >= 0:
                     self.index_d3energy = iline
-#                    break
                 if line.find(h4_estring) >= 0:
                     self.index_h4energy = iline
-#                    break
-            # # Force line indexes
-            # for iline, line in enumerate(self.lines):
-            #     fstring = 'forces   '
-            #     if line.find(fstring) >= 0:
-            #         self.index_force_begin = iline + 1
-            #         line1 = line.replace(':', ',')
-            #         self.index_force_end = iline + 1 + \
-            #             int(line1.split(',')[-1])
-            #         break
-            # # Charge line indexes
-            # for iline, line in enumerate(self.lines):
-            #     fstring = 'net_atomic_charges'
-            #     if line.find(fstring) >= 0:
-            #         self.index_charge_begin = iline + 1
-            #         line1 = line.replace(':', ',')
-            #         natoms = int(line1.split(',')[-1])
-            #         mod = natoms%3
-            #         self.index_charge_end = iline + 1 + \
-            #              natoms/3 + mod
-            #         break
 
 
         self.read_energy()
-        # # read geometry from file in case dftb+ has done steps
-        # # to move atoms, in that case forces are not read
-        # if int(self.parameters['Driver_MaxSteps']) > 0:
-        #     self.atoms = read('geo_end.gen')
-        #     self.results['forces'] = np.zeros([len(self.state), 3])
-        # else:
-        #     self.read_forces()
-#        os.remove('dDMC.tag')
+        self.read_forces()
+
             
     def read_energy(self):
         """Read Energy from dDMC tag output file (dDMC.tag)."""
@@ -149,38 +94,58 @@ class D3H4(FileIOCalculator):
 
         # Energy:
         try:
-            # The kcal/mol is to convert everything in eV
+        # The kcal/mol is to convert everything in eV
             d3_energy = float(self.lines[self.index_d3energy].split()[3]) * kcal/mol
             h4_energy = float(self.lines[self.index_h4energy].split()[1]) * kcal/mol
-            if os.environ['H4_correction'] == 'no': h4_energy = 0.0
+
+            # For back compatibility purpose
+            if 'H4_correction' in os.environ:
+                if os.environ['H4_correction'] == 'no': h4_energy = 0.0
+            ################################
+
+            if self.parameters['noH4']: h4_energy = 0.0
             self.results['energy'] = d3_energy + h4_energy
         except:
             raise RuntimeError('Problem in reading energy')
 
-    # def read_forces(self):
-    #     """Read Forces from dftb output file (results.tag)."""
-    #     from ase.units import Hartree, Bohr
+    def read_matrix(self,nfile,string,nats):
 
-    #     try:
-    #         gradients = []
-    #         for j in range(self.index_force_begin, self.index_force_end):
-    #             word = self.lines[j].split()
-    #             gradients.append([float(word[k]) for k in range(0, 3)])
+        outfile = open(nfile,'r')
+        lines = outfile.readlines()
+        outfile.close()
 
-    #         self.results['forces'] = np.array(gradients) * Hartree / Bohr
+        offset = 1
 
-    #     except:
-    #         raise RuntimeError('Problem in reading forces')
+        if string == None: 
+            string = lines[0].split()[0]
+            offset = 0
+
+        forces = np.zeros((nats, 3), float)
+
+        try:
+            for i, line in enumerate(lines):
+                if line.find(string) != -1:
+                    for j in range(nats):
+                        gline = lines[i + j + offset]
+                        forces[j,:] = map(float, map(lambda x: x.replace('D','E'), gline.split()))
+                    break
+
+            return np.array(forces)
+
+        except:
+            raise RuntimeError('Problem in reading forces from '+nfile)
+
+    def read_forces(self):
+        """Read Forces from the d3h4.out output file and from dft3_gradient file."""
+        from ase.units import Hartree, Bohr
         
-    # def read_charges(self):
-    #     try:
-    #         charges = []
-    #         for j in range(self.index_charge_begin, self.index_charge_end):
-    #             word = self.lines[j].split()
-    #             charges.append([float(word[k]) for k in range(len(word))])
+        nats = len(self.atoms)
+        H4_grad = self.read_matrix('d3h4.out','Total gradient', nats) * kcal/mol/Angstrom
+        D3_grad = self.read_matrix('dftd3_gradient',None, nats) * kcal/mol/Angstrom
 
-    #         self.results['charges'] = np.array(charges)
+        if self.parameters['noH4']: H4_grad = 0.0
 
-    #     except:
-    #         raise RuntimeError('Problem in reading charges')
-
+        try:
+            self.results['forces'] = D3_grad + H4_grad
+        except:
+            raise RuntimeError('Problem in reading forces from ')
