@@ -29,11 +29,12 @@ class MopacD3H4(FileIOCalculator):
         FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
                                   label, atoms, **kwargs)
 
+        self.mopac_calc = Mopac(label=self.label)
+        self.d3h4_calc = D3H4(label=self.label)
+
 
     def write_input(self, atoms, properties=None, systems_changes=None):
-        self.mopac_calc = Mopac(label=self.label)
         self.mopac_calc.parameters.update(self.mopacdict)
-        self.d3h4_calc = D3H4(label=self.label)
         self.d3h4_calc.parameters.update(self.d3h4dict)
 
         
