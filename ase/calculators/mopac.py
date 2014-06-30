@@ -26,15 +26,15 @@ class Mopac(FileIOCalculator):
     implemented_properties = ['energy', 'forces', 'charges']
 
     def __init__(self, label='mopac', restart=None, atoms=None, ignore_bad_restart_file=None,**kwargs):
-                        
+        
         # set initial values
         self.default_parameters = dict(
             restart = 0,
-            spin = 0,
+            spin = 1,
             opt = False,
             functional = 'PM6',
             job_type = ['NOANCI','GRADIENTS', '1SCF'],
-            relscf = 0.000001,
+            relscf = 0.1,
             charge = 0
         )
         
@@ -92,15 +92,18 @@ class Mopac(FileIOCalculator):
         #write charge
         charge = sum(atoms.get_initial_charges())
         charge = max([charge,self.parameters['charge']])
+        print charge
         if charge != 0:
             mopac_input += 'CHARGE=%i ' % (charge)
         
         #write spin
-        spin = self.parameters['spin']
-        if spin == 1.:
-            mopac_input += 'DOUBLET '
-        elif spin == 2.:
-            mopac_input += 'TRIPLET '
+        spin = int(self.parameters['spin'])
+        spin_keywords = {
+            1: 'SINGLET',
+            2: 'DOUBLET',
+            3: 'TRIPLET',
+        }
+        mopac_input += spin_keywords[spin]+' '
 
         #input down
         mopac_input += '\n'
@@ -168,12 +171,15 @@ class Mopac(FileIOCalculator):
 
         energy = None
         for line in lines:
+            # if line.find('TOTAL ENERGY') != -1:
+            #     words = line.split()
+            #     energy = words[3]
             if line.find('HEAT OF FORMATION') != -1:
                 words = line.split()
                 energy = words[5]
-            if line.find('H.o.F. per unit cell') != -1:
-                words = line.split()
-                energy = words[5]
+            # if line.find('H.o.F. per unit cell') != -1:
+            #     words = line.split()
+            #     energy = words[5]
             if line.find('UNABLE TO ACHIEVE SELF-CONSISTENCE') != -1:
                 energy = None
         if energy is None:
@@ -182,6 +188,7 @@ class Mopac(FileIOCalculator):
         try:
             energy = float(energy)
             energy *= (kcal / mol)
+            print energy
             self.results['energy'] = energy
         except:
             raise RuntimeError('Problem in reading energy')
@@ -190,7 +197,6 @@ class Mopac(FileIOCalculator):
     def read_forces(self):
         """
         Reads the FORCES from the output file
-        search string: (HEAT of FORMATION in kcal / mol / AA)
         """
         outfile = open('mopac.out')
         lines = outfile.readlines()
