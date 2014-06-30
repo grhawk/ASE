@@ -92,7 +92,7 @@ class Mopac(FileIOCalculator):
         #write charge
         charge = sum(atoms.get_initial_charges())
         charge = max([charge,self.parameters['charge']])
-        print charge
+
         if charge != 0:
             mopac_input += 'CHARGE=%i ' % (charge)
         
@@ -188,7 +188,6 @@ class Mopac(FileIOCalculator):
         try:
             energy = float(energy)
             energy *= (kcal / mol)
-            print energy
             self.results['energy'] = energy
         except:
             raise RuntimeError('Problem in reading energy')
