@@ -21,7 +21,7 @@ class Mopac(FileIOCalculator):
     name = 'MOPAC'
 
     """Command to run mopac. """
-    command = os.environ['MOPAC_COMMAND']+' mopac.mop'
+    command = os.environ['MOPAC_COMMAND']+' mopac.mop &> .mopaclog'
 
     implemented_properties = ['energy', 'forces', 'charges']
 
