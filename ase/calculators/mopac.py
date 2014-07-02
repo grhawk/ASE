@@ -94,7 +94,7 @@ class Mopac(FileIOCalculator):
         charge = max([charge,self.parameters['charge']])
 
         if charge != 0:
-            mopac_input += 'CHARGE=%i ' % (charge)
+            mopac_input += 'CHARGE=%i ' % (int(charge))
         
         #write spin
         spin = int(self.parameters['spin'])
