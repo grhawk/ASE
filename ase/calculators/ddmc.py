@@ -11,13 +11,8 @@ from ase.calculators.calculator import FileIOCalculator, kpts2mp
 class dDMC(FileIOCalculator):
     """ A calculator to compute the dDMC corrections with ase-FileIOCalculator nomenclature
     """
-    if 'DFTB_COMMAND' in os.environ:
-        dftb_command = os.environ['DFTB_COMMAND'] + ' > DFTB.out'
-    else:
-        dftb_command = 'dftb+ > PREFIX.out'
-
     if 'dDMC_COMMAND' in os.environ:
-        dDMC_command = os.environ['dDMC_COMMAND'] + '< '+ 'ddmc.in' +' > dDMC.out'
+        dDMC_command = os.environ['dDMC_COMMAND'] + ' < '+ 'ddmc.in' +' > dDMC.out'
     else:
         raise EnvironmentError('1','dDMC_COMMAND has to be defined')
 
