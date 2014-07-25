@@ -1,14 +1,12 @@
 """
 This module defines an ASE interface to D3H4.
 !!!WARNING!!!
-This correction can be applied to PM6, DFTB and PM3 but this is defined in the 
-software: only for D3 it can be decided from here.
+This correction can be applied to PM6, DFTB and PM3 and this is defined in the enviromental variable
+that compose the command!
 """
 
 import os
-
 import numpy as np
-
 from ase.units import kcal, mol, Angstrom
 from ase.calculators.calculator import FileIOCalculator, kpts2mp
 

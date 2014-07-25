@@ -24,10 +24,11 @@ class MopacdDMC(FileIOCalculator):
         self.mopacdict = mopacdict
         self.ddmcdict = ddmcdict
         
-        self.ddmcdict['param_a'] = 1.5880952
-        self.ddmcdict['param_b'] = 0.2533719
+        self.ddmcdict['param_a'] = 1.53014262236515
+        self.ddmcdict['param_b'] = 1.04216259309481
         self.ddmcdict['param_c'] = 23.0
-        self.ddmcdict['dftype'] = 3
+        self.ddmcdict['param_d'] = 1.84166256639050
+        self.ddmcdict['dftype'] = 4
         self.ddmcdict['tagtype'] = 'column'
 
 
