@@ -2,9 +2,7 @@
 """
 
 import os
-
 import numpy as np
-
 from ase.calculators.calculator import FileIOCalculator, kpts2mp
 
 
@@ -29,7 +27,7 @@ class dDMC(FileIOCalculator):
         self.default_parameters = dict(
             tag = label+'.tag',
             debugflag = 'down',
-            geometry = label+'.xyz',
+            geometry = label+'_ddmc.xyz',
             atomdata = 'notImportant',
             tagtype = 'dftbp',
             gradient = 'UP'
@@ -83,7 +81,7 @@ class dDMC(FileIOCalculator):
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
         self.write_dDMC_in()
-        write(self.label+'.xyz', atoms)
+        write(self.label+'_ddmc.xyz', atoms)
 
     def read_results(self):
         """ all results are read from label.tag file 
@@ -112,29 +110,9 @@ class dDMC(FileIOCalculator):
                     self.index_force_end = iline + 1 + \
                         int(line1.split(',')[-1])
                     break
-            # # Charge line indexes
-            # for iline, line in enumerate(self.lines):
-            #     fstring = 'net_atomic_charges'
-            #     if line.find(fstring) >= 0:
-            #         self.index_charge_begin = iline + 1
-            #         line1 = line.replace(':', ',')
-            #         natoms = int(line1.split(',')[-1])
-            #         mod = natoms%3
-            #         self.index_charge_end = iline + 1 + \
-            #              natoms/3 + mod
-            #         break
-
 
         self.read_energy()
         self.read_forces()
-        # # read geometry from file in case dftb+ has done steps
-        # # to move atoms, in that case forces are not read
-        # if int(self.parameters['Driver_MaxSteps']) > 0:
-        #     self.atoms = read('geo_end.gen')
-        #     self.results['forces'] = np.zeros([len(self.state), 3])
-        # else:
-        #     self.read_forces()
-#        os.remove('dDMC.tag')
             
     def read_energy(self):
         """Read Energy from dDMC tag output file (dDMC.tag)."""
@@ -162,15 +140,3 @@ class dDMC(FileIOCalculator):
         except:
             raise RuntimeError('Problem in reading forces')
         
-    # def read_charges(self):
-    #     try:
-    #         charges = []
-    #         for j in range(self.index_charge_begin, self.index_charge_end):
-    #             word = self.lines[j].split()
-    #             charges.append([float(word[k]) for k in range(len(word))])
-
-    #         self.results['charges'] = np.array(charges)
-
-    #     except:
-    #         raise RuntimeError('Problem in reading charges')
-
