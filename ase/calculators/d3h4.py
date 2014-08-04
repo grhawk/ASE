@@ -16,7 +16,7 @@ class D3H4(FileIOCalculator):
     """
 
     if 'D3' in os.environ and 'H4' in os.environ and 'D3FUNC' in os.environ and 'D3DF' in os.environ:
-        D3H4_command = os.environ['D3'] + ' struct.xyz ' + '-grad -func '+os.environ['D3FUNC']+' -'+os.environ['D3DF']+' > d3h4.out; ' + os.environ['H4'] + ' < struct.xyz >> d3h4.out'
+        D3H4_command = os.environ['D3'] + ' struct-d3h4-ase.xyz ' + '-grad -func '+os.environ['D3FUNC']+' -'+os.environ['D3DF']+' > d3h4.out; ' + os.environ['H4'] + ' < struct-d3h4-ase.xyz >> d3h4.out'
     else:
         raise EnvironmentError('1','Some variable is missing: H4, D3, D3FUNC, D3DF')
 
@@ -135,13 +135,23 @@ class D3H4(FileIOCalculator):
 
     def read_forces(self):
         """Read Forces from the d3h4.out output file and from dft3_gradient file."""
+        from ase.units import kcal, mol, Angstrom
         from ase.units import Hartree, Bohr
+
         
         nats = len(self.atoms)
         H4_grad = self.read_matrix('d3h4.out','Total gradient', nats) * kcal/mol/Angstrom
-        D3_grad = self.read_matrix('dftd3_gradient',None, nats) * kcal/mol/Angstrom
+        # D3_grad = self.read_matrix('dftd3_gradient',None, nats) * kcal/mol/Angstrom
+        D3_grad = self.read_matrix('dftd3_gradient',None, nats) * Hartree / Bohr
 
         if self.parameters['noH4']: H4_grad = 0.0
+        # For back compatibility purpose
+        if 'H4_correction' in os.environ:
+            if os.environ['H4_correction'] == 'no': H4_grad = 0.0
+        ################################
+        # print H4_grad
+        # print D3_grad
+        # print 'ang',kcal/mol
 
         try:
             self.results['forces'] = D3_grad + H4_grad
