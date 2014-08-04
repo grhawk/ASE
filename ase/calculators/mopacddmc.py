@@ -25,7 +25,6 @@ class MopacdDMC(FileIOCalculator):
         self.ddmcdict = ddmcdict
 
         ddmc_default_parameters = {}
-        
         ddmc_default_parameters['param_a'] = 1.53014262236515
         ddmc_default_parameters['param_b'] = 1.04216259309481
         ddmc_default_parameters['param_c'] = 23.0
@@ -33,7 +32,7 @@ class MopacdDMC(FileIOCalculator):
         ddmc_default_parameters['dftype'] = 4
         ddmc_default_parameters['tagtype'] = 'column'
 
-        for param in ddmc_default_paramters.keys():
+        for param in ddmc_default_parameters.keys():
             if not param in self.ddmcdict.keys():
                 self.ddmcdict[param] = ddmc_default_parameters[param]
 
