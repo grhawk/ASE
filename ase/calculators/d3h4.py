@@ -58,7 +58,7 @@ class D3H4(FileIOCalculator):
         from ase.io import write
         FileIOCalculator.write_input(\
             self, atoms, properties, system_changes)
-        write('struct.xyz', atoms)
+        write('struct-d3h4-ase.xyz', atoms)
 
     def read_results(self):
         """ all results are read from label.tag file 
