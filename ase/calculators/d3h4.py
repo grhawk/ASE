@@ -149,11 +149,13 @@ class D3H4(FileIOCalculator):
         if 'H4_correction' in os.environ:
             if os.environ['H4_correction'] == 'no': H4_grad = 0.0
         ################################
-        # print H4_grad
-        # print D3_grad
         # print 'ang',kcal/mol
 
         try:
-            self.results['forces'] = D3_grad + H4_grad
+            self.results['forces'] = -D3_grad + H4_grad
+#            print H4_grad
+#            print D3_grad
+#            print self.results['forces']
+#            raw_input('press enter...')
         except:
             raise RuntimeError('Problem in reading forces from ')
